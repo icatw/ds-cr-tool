@@ -68,10 +68,28 @@ func (r *DefaultReporter) generateMarkdown(issues []Issue) ([]byte, error) {
 
 	// 写入统计信息
 	buf.WriteString("## 评审结果统计\n\n")
+
+	// 添加代码统计信息
+	buf.WriteString("### 代码变更统计\n\n")
+	buf.WriteString("| 指标 | 数值 |\n")
+	buf.WriteString("|------|---------|\n")
+	buf.WriteString(fmt.Sprintf("| 评审文件数 | %d |\n", len(getUniqueFiles(issues))))
+	buf.WriteString(fmt.Sprintf("| 问题总数 | %d |\n", len(issues)))
+
+	// 写入严重程度统计
+	buf.WriteString("\n### 问题严重程度分布\n\n")
 	buf.WriteString("| 严重程度 | 数量 |\n")
-	buf.WriteString("|---------|------|\n")
+	buf.WriteString("|---------|---------|\n")
 	for severity, count := range severityCount {
-		buf.WriteString(fmt.Sprintf("| %s | %d |\n", severity, count))
+	    buf.WriteString(fmt.Sprintf("| %s | %d |\n", severity, count))
+	}
+	buf.WriteString("\n")
+
+	// 写入优化建议总结
+	buf.WriteString("## 整体优化建议\n\n")
+	suggestions := summarizeSuggestions(issues)
+	for _, suggestion := range suggestions {
+	    buf.WriteString(fmt.Sprintf("- %s\n", suggestion))
 	}
 	buf.WriteString("\n")
 
@@ -124,4 +142,38 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// 辅助函数：获取唯一文件列表
+func getUniqueFiles(issues []Issue) []string {
+    filesMap := make(map[string]bool)
+    for _, issue := range issues {
+        filesMap[issue.FilePath] = true
+    }
+    
+    files := make([]string, 0, len(filesMap))
+    for file := range filesMap {
+        files = append(files, file)
+    }
+    return files
+}
+
+// 辅助函数：汇总优化建议
+func summarizeSuggestions(issues []Issue) []string {
+    suggestionMap := make(map[string]int)
+    for _, issue := range issues {
+        if issue.Suggestion != "" {
+            suggestionMap[issue.Suggestion]++
+        }
+    }
+    
+    suggestions := make([]string, 0, len(suggestionMap))
+    for suggestion, count := range suggestionMap {
+        if count > 1 {
+            suggestions = append(suggestions, fmt.Sprintf("%s (出现%d次)", suggestion, count))
+        } else {
+            suggestions = append(suggestions, suggestion)
+        }
+    }
+    return suggestions
 }
