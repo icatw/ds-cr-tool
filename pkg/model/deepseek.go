@@ -26,18 +26,18 @@ func NewDeepSeekClient(apiKey string) *DeepSeekClient {
 
 // ChatRequest 定义聊天请求的参数结构
 type ChatRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	Stream   bool      `json:"stream"`
-	MaxTokens int      `json:"max_tokens"`
-	Stop     []string  `json:"stop,omitempty"`
-	Temperature float64 `json:"temperature"`
-	TopP     float64   `json:"top_p"`
-	TopK     int       `json:"top_k"`
-	FrequencyPenalty float64 `json:"frequency_penalty"`
-	N        int       `json:"n"`
-	ResponseFormat map[string]string `json:"response_format"`
-	Tools    []Tool    `json:"tools,omitempty"`
+	Model            string            `json:"model"`
+	Messages         []Message         `json:"messages"`
+	Stream           bool              `json:"stream"`
+	MaxTokens        int               `json:"max_tokens"`
+	Stop             []string          `json:"stop,omitempty"`
+	Temperature      float64           `json:"temperature"`
+	TopP             float64           `json:"top_p"`
+	TopK             int               `json:"top_k"`
+	FrequencyPenalty float64           `json:"frequency_penalty"`
+	N                int               `json:"n"`
+	ResponseFormat   map[string]string `json:"response_format"`
+	Tools            []Tool            `json:"tools,omitempty"`
 }
 
 // Message 定义聊天消息的结构
@@ -62,74 +62,74 @@ type FunctionConfig struct {
 
 // ChatResponse 定义API响应的结构
 type ChatResponse struct {
-    ID      string    `json:"id"`
-    Object  string    `json:"object"`
-    Created int64     `json:"created"`
-    Model   string    `json:"model"`
-    Choices []Choice  `json:"choices"`
-    Usage   Usage     `json:"usage"`
+	ID      string   `json:"id"`
+	Object  string   `json:"object"`
+	Created int64    `json:"created"`
+	Model   string   `json:"model"`
+	Choices []Choice `json:"choices"`
+	Usage   Usage    `json:"usage"`
 }
 
 // Choice 定义响应选项的结构
 type Choice struct {
-    Index        int     `json:"index"`
-    Message      Message `json:"message"`
-    FinishReason string  `json:"finish_reason"`
+	Index        int     `json:"index"`
+	Message      Message `json:"message"`
+	FinishReason string  `json:"finish_reason"`
 }
 
 // Usage 定义token使用情况的结构
 type Usage struct {
-    PromptTokens     int `json:"prompt_tokens"`
-    CompletionTokens int `json:"completion_tokens"`
-    TotalTokens      int `json:"total_tokens"`
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
 }
 
 // ReviewCode 发送代码评审请求并处理响应
 func (c *DeepSeekClient) ReviewCode(prompt []Message) (*ChatResponse, error) {
-    req := ChatRequest{
-        Model:       "deepseek-chat",
-        Messages:    prompt,
-        MaxTokens:   2000,
-        Temperature: 0.7,
-        TopP:        0.95,
-        Stream:      false,
-    }
+	req := ChatRequest{
+		Model:       "deepseek-ai/DeepSeek-R1",
+		Messages:    prompt,
+		MaxTokens:   2000,
+		Temperature: 0.7,
+		TopP:        0.95,
+		Stream:      false,
+	}
 
-    jsonData, err := json.Marshal(req)
-    if err != nil {
-        return nil, fmt.Errorf("序列化请求失败: %v", err)
-    }
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("序列化请求失败: %v", err)
+	}
 
-    httpReq, err := http.NewRequest("POST", DeepSeekAPIURL, bytes.NewBuffer(jsonData))
-    if err != nil {
-        return nil, fmt.Errorf("创建HTTP请求失败: %v", err)
-    }
+	httpReq, err := http.NewRequest("POST", DeepSeekAPIURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("创建HTTP请求失败: %v", err)
+	}
 
-    httpReq.Header.Set("Content-Type", "application/json")
-    httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
 
-    client := &http.Client{}
-    resp, err := client.Do(httpReq)
-    if err != nil {
-        return nil, fmt.Errorf("发送请求失败: %v", err)
-    }
-    defer resp.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("发送请求失败: %v", err)
+	}
+	defer resp.Body.Close()
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, fmt.Errorf("读取响应内容失败: %v", err)
-    }
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应内容失败: %v", err)
+	}
 
-    if resp.StatusCode != http.StatusOK {
-        return nil, fmt.Errorf("API请求失败: %s", string(body))
-    }
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API请求失败: %s", string(body))
+	}
 
-    var chatResp ChatResponse
-    if err := json.Unmarshal(body, &chatResp); err != nil {
-        return nil, fmt.Errorf("解析响应失败: %v", err)
-    }
+	var chatResp ChatResponse
+	if err := json.Unmarshal(body, &chatResp); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %v", err)
+	}
 
-    return &chatResp, nil
+	return &chatResp, nil
 }
 
 // ToolCall 定义工具调用的结构
