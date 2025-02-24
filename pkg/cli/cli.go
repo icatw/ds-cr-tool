@@ -49,7 +49,8 @@ func ParseFlags() (*Options, error) {
 func validateOptions(opts *Options) error {
 	// 检查评审范围参数
 	if opts.Files == "" && opts.CommitRange == "" {
-		return fmt.Errorf("必须指定评审范围：使用 --files 或 --commit-range")
+		// 如果未指定任何参数，默认使用HEAD~1..HEAD
+		opts.CommitRange = "HEAD~1..HEAD"
 	}
 
 	// 检查输出格式

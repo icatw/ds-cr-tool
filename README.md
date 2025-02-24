@@ -37,13 +37,13 @@ echo '{"api_key": "your_api_key"}' > ~/.cr/config.json
 
 ```bash
 # 评审最新的代码改动
-cr diff
+cr diff --commit-range=HEAD~1..HEAD --files=main.go,utils.go
 
 # 评审指定的提交
-cr review <commit-id>
+cr review --commit-range=<commit-id>..HEAD --files=main.go,utils.go
 
 # 评审指定范围的提交
-cr review <start-commit>..<end-commit>
+cr review --commit-range=<start-commit>..<end-commit> --files=main.go,utils.go
 ```
 
 ## 配置
