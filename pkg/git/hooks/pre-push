@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# 获取要推送的提交范围
+z40=0000000000000000000000000000000000000000
+
+while read local_ref local_sha remote_ref remote_sha
+do
+    if [ "$local_sha" = $z40 ]; then
+        # 分支删除操作，跳过
+        continue
+    fi
+
+    if [ "$remote_sha" = $z40 ]; then
+        # 新分支，检查所有提交
+        range="$local_sha"
+    else
+        # 更新已有分支，检查新增的提交
+        range="$remote_sha..$local_sha"
+    fi
+
+    # 运行代码评审工具
+    review_result=$(ds-cr-tool review --commit-range "$range")
+
+    # 检查评审结果
+    if [ $? -ne 0 ]; then
+        echo "代码评审失败，请修复以下问题："
+        echo "$review_result"
+        exit 1
+    fi
+done
+
+# 评审通过
+echo "代码评审通过"
+exit 0

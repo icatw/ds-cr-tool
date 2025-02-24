@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# 获取暂存区的文件列表
+files=$(git diff --cached --name-only --diff-filter=ACM)
+
+# 如果没有文件要提交，直接退出
+if [ -z "$files" ]; then
+    exit 0
+ fi
+
+# 运行代码评审工具
+review_result=$(ds-cr-tool review --files "$files")
+
+# 检查评审结果
+if [ $? -ne 0 ]; then
+    echo "代码评审失败，请修复以下问题："
+    echo "$review_result"
+    exit 1
+fi
+
+# 评审通过
+echo "代码评审通过"
+exit 0
