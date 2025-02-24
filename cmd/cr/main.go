@@ -57,7 +57,7 @@ func main() {
 	modelCfg := &model.Config{
 		Type:   "deepseek",
 		APIKey: os.Getenv("DEEPSEEK_API_KEY"),
-		Model:  "deepseek-chat",
+		Model:  "deepseek-ai/DeepSeek-R1",
 	}
 	modelClient, err := model.NewModelClient(modelCfg)
 	if err != nil {
