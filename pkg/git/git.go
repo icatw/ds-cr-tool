@@ -71,3 +71,21 @@ func (g *GitClient) GetChangedFiles(from, to string) ([]string, error) {
 	
 	return files, nil
 }
+
+// GetFileContent 获取指定提交中的文件内容
+func (g *GitClient) GetFileContent(filePath string, commitHash string) (string, error) {
+	args := []string{"show", fmt.Sprintf("%s:%s", commitHash, filePath)}
+	
+	cmd := exec.Command("git", args...)
+	cmd.Dir = g.repoPath
+	
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("获取文件内容失败: %v\n%s", err, stderr.String())
+	}
+	
+	return stdout.String(), nil
+}

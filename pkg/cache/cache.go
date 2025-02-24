@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -47,7 +46,7 @@ func (c *ReviewCache) Get(content string) (*CacheItem, error) {
 	cacheFile := filepath.Join(c.cacheDir, contentHash+".json")
 
 	// 读取缓存文件
-	data, err := ioutil.ReadFile(cacheFile)
+	data, err := os.ReadFile(cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -64,7 +63,9 @@ func (c *ReviewCache) Get(content string) (*CacheItem, error) {
 	// 检查是否过期
 	if item.ExpireAt != nil && time.Now().After(*item.ExpireAt) {
 		// 删除过期缓存
-		os.Remove(cacheFile)
+		if err := os.Remove(cacheFile); err != nil {
+			return nil, fmt.Errorf("删除过期缓存文件失败: %v", err)
+		}
 		return nil, nil
 	}
 
@@ -94,7 +95,7 @@ func (c *ReviewCache) Set(content string, result string, expireAfter *time.Durat
 
 	// 写入缓存文件
 	cacheFile := filepath.Join(c.cacheDir, item.ContentHash+".json")
-	return ioutil.WriteFile(cacheFile, data, 0644)
+	return os.WriteFile(cacheFile, data, 0644)
 }
 
 // hashContent 计算内容的哈希值
@@ -106,7 +107,7 @@ func (c *ReviewCache) hashContent(content string) string {
 // Clear 清理过期的缓存文件
 func (c *ReviewCache) Clear() error {
 	// 遍历缓存目录
-	files, err := ioutil.ReadDir(c.cacheDir)
+	files, err := os.ReadDir(c.cacheDir)
 	if err != nil {
 		return err
 	}
@@ -117,9 +118,9 @@ func (c *ReviewCache) Clear() error {
 		}
 
 		filePath := filepath.Join(c.cacheDir, file.Name())
-		
+
 		// 读取缓存项
-		data, err := ioutil.ReadFile(filePath)
+		data, err := os.ReadFile(filePath)
 		if err != nil {
 			continue
 		}
@@ -131,7 +132,10 @@ func (c *ReviewCache) Clear() error {
 
 		// 删除过期的缓存文件
 		if item.ExpireAt != nil && time.Now().After(*item.ExpireAt) {
-			os.Remove(filePath)
+			if err := os.Remove(filePath); err != nil {
+				// 记录错误但继续处理其他文件
+				fmt.Printf("删除过期缓存文件失败 %s: %v\n", filePath, err)
+			}
 		}
 	}
 

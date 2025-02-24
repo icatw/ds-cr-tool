@@ -50,8 +50,9 @@ func (m *HookManager) InstallHook(hookType HookType) error {
 		config = HookConfig{Enabled: true, Options: make(map[string]string)}
 	}
 
+	// 如果钩子未启用，则跳过安装
 	if !config.Enabled {
-		return fmt.Errorf("hook is disabled: %s", hookType)
+		return nil
 	}
 
 	// 检查钩子文件是否已存在

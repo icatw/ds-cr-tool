@@ -3,6 +3,9 @@ package review
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -12,8 +15,8 @@ type ReportFormat string
 
 const (
 	MarkdownFormat ReportFormat = "markdown"
-	HTMLFormat    ReportFormat = "html"
-	PDFFormat     ReportFormat = "pdf"
+	HTMLFormat     ReportFormat = "html"
+	PDFFormat      ReportFormat = "pdf"
 )
 
 // Reporter 定义报告生成器接口
@@ -65,7 +68,7 @@ func (r *DefaultReporter) generateMarkdown(issues []Issue) ([]byte, error) {
 	// 写入严重程度统计
 	buf.WriteString("\n### 问题严重程度分布\n\n")
 	buf.WriteString("| 严重程度 | 数量 |\n")
-	buf.WriteString("|---------|---------|"))
+	buf.WriteString("|---------|---------|\n")
 	for severity, count := range severityCount {
 		buf.WriteString(fmt.Sprintf("| %s | %d |\n", severity, count))
 	}
@@ -173,7 +176,7 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 
 	// 写入统计卡片
 	buf.WriteString(`
-	<div class="stats">`))
+	<div class="stats">`)
 	buf.WriteString(fmt.Sprintf(`
 		<div class="stat-card">
 			<h3>评审文件数</h3>
@@ -188,7 +191,7 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 	// 写入严重程度分布
 	buf.WriteString(`
 	<div class="stat-card">
-		<h3>问题严重程度分布</h3>`))
+		<h3>问题严重程度分布</h3>`)
 	for severity, count := range severityCount {
 		buf.WriteString(fmt.Sprintf(`
 		<p><span class="severity %s">%s</span>: %d</p>`, strings.ToLower(severity), severity, count))
@@ -200,7 +203,7 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 	// 写入优化建议
 	buf.WriteString(`
 	<h2>整体优化建议</h2>
-	<div class="suggestions">`))
+	<div class="suggestions">`)
 	suggestions := summarizeSuggestions(issues)
 	for _, suggestion := range suggestions {
 		buf.WriteString(fmt.Sprintf(`
@@ -238,7 +241,7 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 
 		if issue.CodeSnippet != "" {
 			buf.WriteString(`
-		<pre class="code">`))
+		<pre class="code">`)
 			lines := strings.Split(issue.CodeSnippet, "\n")
 			contextStart := max(0, issue.Line-3)
 			contextEnd := min(len(lines), issue.Line+3)
@@ -267,14 +270,16 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 }
 
 // 辅助函数
-func max(a, b int) int {
+// getMax 获取两个整数中的较大值
+func getMax(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func min(a, b int) int {
+// getMin 获取两个整数中的较小值
+func getMin(a, b int) int {
 	if a < b {
 		return a
 	}
@@ -283,18 +288,19 @@ func min(a, b int) int {
 
 // 辅助函数：获取唯一文件列表
 func getUniqueFiles(issues []Issue) []string {
-    filesMap := make(map[string]bool)
-    for _, issue := range issues {
-        filesMap[issue.FilePath] = true
-    }
-    
-    // 将map转换为切片
-    files := make([]string, 0, len(filesMap))
-    for file := range filesMap {
-        files = append(files, file)
-    }
-    return files
+	filesMap := make(map[string]bool)
+	for _, issue := range issues {
+		filesMap[issue.FilePath] = true
+	}
+
+	// 将map转换为切片
+	files := make([]string, 0, len(filesMap))
+	for file := range filesMap {
+		files = append(files, file)
+	}
+	return files
 }
+
 // generatePDF 生成PDF格式的报告
 func (r *DefaultReporter) generatePDF(issues []Issue) ([]byte, error) {
 	// 首先生成HTML报告
@@ -308,7 +314,11 @@ func (r *DefaultReporter) generatePDF(issues []Issue) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("创建临时HTML文件失败: %v", err)
 	}
-	defer os.Remove(tmpHTML.Name())
+	defer func() {
+		if err := os.Remove(tmpHTML.Name()); err != nil {
+			fmt.Printf("删除临时HTML文件失败: %v\n", err)
+		}
+	}()
 
 	// 写入HTML内容
 	if _, err := tmpHTML.Write(htmlContent); err != nil {
@@ -321,7 +331,11 @@ func (r *DefaultReporter) generatePDF(issues []Issue) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("创建临时PDF文件失败: %v", err)
 	}
-	defer os.Remove(tmpPDF.Name())
+	defer func() {
+		if err := os.Remove(tmpPDF.Name()); err != nil {
+			fmt.Printf("删除临时PDF文件失败: %v\n", err)
+		}
+	}()
 	tmpPDF.Close()
 
 	// 使用wkhtmltopdf将HTML转换为PDF
@@ -365,34 +379,34 @@ func (r *DefaultReporter) Generate(issues []Issue, format ReportFormat) ([]byte,
 
 // summarizeSuggestions 汇总分析评审问题中的建议，生成整体优化建议列表
 func summarizeSuggestions(issues []Issue) []string {
-    // 使用map对建议进行分类和去重
-    suggestionMap := make(map[string]int)
-    for _, issue := range issues {
-        if issue.Suggestion != "" {
-            suggestionMap[issue.Suggestion]++
-        }
-    }
+	// 使用map对建议进行分类和去重
+	suggestionMap := make(map[string]int)
+	for _, issue := range issues {
+		if issue.Suggestion != "" {
+			suggestionMap[issue.Suggestion]++
+		}
+	}
 
-    // 将建议转换为切片并按出现频率排序
-    type suggestionCount struct {
-        suggestion string
-        count     int
-    }
-    suggestions := make([]suggestionCount, 0, len(suggestionMap))
-    for suggestion, count := range suggestionMap {
-        suggestions = append(suggestions, suggestionCount{suggestion, count})
-    }
+	// 将建议转换为切片并按出现频率排序
+	type suggestionCount struct {
+		suggestion string
+		count      int
+	}
+	suggestions := make([]suggestionCount, 0, len(suggestionMap))
+	for suggestion, count := range suggestionMap {
+		suggestions = append(suggestions, suggestionCount{suggestion, count})
+	}
 
-    // 按出现频率降序排序
-    sort.Slice(suggestions, func(i, j int) bool {
-        return suggestions[i].count > suggestions[j].count
-    })
+	// 按出现频率降序排序
+	sort.Slice(suggestions, func(i, j int) bool {
+		return suggestions[i].count > suggestions[j].count
+	})
 
-    // 生成最终的建议列表
-    result := make([]string, 0, len(suggestions))
-    for _, s := range suggestions {
-        result = append(result, s.suggestion)
-    }
+	// 生成最终的建议列表
+	result := make([]string, 0, len(suggestions))
+	for _, s := range suggestions {
+		result = append(result, s.suggestion)
+	}
 
-    return result
+	return result
 }

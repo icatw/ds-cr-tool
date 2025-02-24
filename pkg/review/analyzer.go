@@ -14,6 +14,7 @@ type FileChange struct {
 	OldContent  string
 	NewContent  string
 	DiffContent string
+	Lines       []string // 代码行内容
 }
 
 // Analyzer 代码分析器
@@ -50,10 +51,24 @@ func (a *Analyzer) AnalyzeChanges(from, to string) ([]FileChange, error) {
 		// 根据差异内容判断改动类型
 		if strings.Contains(diff, fmt.Sprintf("a/%s", file)) && strings.Contains(diff, fmt.Sprintf("b/%s", file)) {
 			change.ChangeType = "modified"
+			// 获取新文件内容
+			newContent, err := a.gitClient.GetFileContent(file, to)
+			if err == nil {
+				change.NewContent = newContent
+				// 将新文件内容按行分割
+				change.Lines = strings.Split(newContent, "\n")
+			}
 		} else if strings.Contains(diff, fmt.Sprintf("a/%s", file)) {
 			change.ChangeType = "deleted"
 		} else {
 			change.ChangeType = "added"
+			// 获取新文件内容
+			newContent, err := a.gitClient.GetFileContent(file, to)
+			if err == nil {
+				change.NewContent = newContent
+				// 将新文件内容按行分割
+				change.Lines = strings.Split(newContent, "\n")
+			}
 		}
 
 		// 提取该文件的差异内容

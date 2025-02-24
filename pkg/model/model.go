@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 // ModelClient 定义通用的AI模型客户端接口
 type ModelClient interface {
 	// Chat 发送聊天请求并获取响应

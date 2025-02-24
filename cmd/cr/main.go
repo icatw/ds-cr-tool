@@ -22,9 +22,13 @@ func main() {
 	}
 
 	// 初始化Git客户端
-	gitClient, err := git.NewGitClient()
+	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("初始化Git客户端失败: %v\n", err)
+		log.Fatalf("获取当前工作目录失败: %v\n", err)
+	}
+	gitClient := git.NewGitClient(wd)
+	if gitClient == nil {
+		log.Fatalf("初始化Git客户端失败\n")
 	}
 
 	// 初始化代码分析器
@@ -93,12 +97,12 @@ func main() {
 
 		// 输出评审结果
 		fmt.Printf("\n=== 文件: %s ===\n", change.FilePath)
-		fmt.Println(resp.Content)
+		fmt.Println(resp.Choices[0].Message.Content)
 
 		// 缓存评审结果
 		if reviewCache != nil {
 			expireAfter := 24 * time.Hour
-			if err := reviewCache.Set(change.DiffContent, resp.Content, &expireAfter); err != nil {
+			if err := reviewCache.Set(change.DiffContent, resp.Choices[0].Message.Content, &expireAfter); err != nil {
 				log.Printf("缓存评审结果失败: %v\n", err)
 			}
 		}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -115,9 +115,9 @@ func (c *DeepSeekClient) ReviewCode(prompt []Message) (*ChatResponse, error) {
     }
     defer resp.Body.Close()
 
-    body, err := ioutil.ReadAll(resp.Body)
+    body, err := io.ReadAll(resp.Body)
     if err != nil {
-        return nil, fmt.Errorf("读取响应失败: %v", err)
+        return nil, fmt.Errorf("读取响应内容失败: %v", err)
     }
 
     if resp.StatusCode != http.StatusOK {
@@ -145,13 +145,6 @@ type FunctionResult struct {
 	Arguments string `json:"arguments"`
 }
 
-// Usage 定义token使用情况的结构
-type Usage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
-}
-
 // Chat 发送聊天请求并获取响应
 func (c *DeepSeekClient) Chat(req *ChatRequest) (*ChatResponse, error) {
 	payload, err := json.Marshal(req)
@@ -173,7 +166,7 @@ func (c *DeepSeekClient) Chat(req *ChatRequest) (*ChatResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response failed: %v", err)
 	}
