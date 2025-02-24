@@ -17,7 +17,7 @@ type Config struct {
 	// 模型名称
 	Model string `json:"model"`
 	// 其他通用配置参数
-	MaxTokens int     `json:"max_tokens"`
+	MaxTokens   int     `json:"max_tokens"`
 	Temperature float64 `json:"temperature"`
 }
 
@@ -25,7 +25,7 @@ type Config struct {
 func NewModelClient(cfg *Config) (ModelClient, error) {
 	switch cfg.Type {
 	case "deepseek":
-		return NewDeepSeekClient(cfg.APIKey), nil
+		return NewDeepSeekClient(cfg), nil
 	default:
 		return nil, fmt.Errorf("unsupported model type: %s", cfg.Type)
 	}

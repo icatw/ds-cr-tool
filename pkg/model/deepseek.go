@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 const (
@@ -14,14 +15,78 @@ const (
 
 // DeepSeekClient 实现DeepSeek API的客户端
 type DeepSeekClient struct {
-	apiKey string
+	config *Config
+	client *http.Client
 }
 
 // NewDeepSeekClient 创建新的DeepSeek客户端实例
-func NewDeepSeekClient(apiKey string) *DeepSeekClient {
+func NewDeepSeekClient(cfg *Config) *DeepSeekClient {
 	return &DeepSeekClient{
-		apiKey: apiKey,
+		config: cfg,
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
+}
+
+// Chat 发送聊天请求并获取响应
+func (c *DeepSeekClient) Chat(req *ChatRequest) (*ChatResponse, error) {
+	// 使用配置参数
+	if req.Model == "" {
+		req.Model = c.config.Model
+	}
+	if req.MaxTokens == 0 {
+		req.MaxTokens = c.config.MaxTokens
+	}
+	if req.Temperature == 0 {
+		req.Temperature = c.config.Temperature
+	}
+
+	payload, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshal request failed: %v", err)
+	}
+
+	// 添加重试机制
+	var resp *http.Response
+	var lastErr error
+	for retries := 0; retries < 3; retries++ {
+		httpReq, err := http.NewRequest("POST", DeepSeekAPIURL, bytes.NewReader(payload))
+		if err != nil {
+			return nil, fmt.Errorf("create request failed: %v", err)
+		}
+
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
+		httpReq.Header.Set("Content-Type", "application/json")
+
+		resp, err = c.client.Do(httpReq)
+		if err == nil {
+			break
+		}
+		lastErr = err
+		time.Sleep(time.Duration(retries+1) * time.Second)
+	}
+
+	if resp == nil {
+		return nil, fmt.Errorf("all retries failed: %v", lastErr)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response failed: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var chatResp ChatResponse
+	if err := json.Unmarshal(body, &chatResp); err != nil {
+		return nil, fmt.Errorf("unmarshal response failed: %v", err)
+	}
+
+	return &chatResp, nil
 }
 
 // ChatRequest 定义聊天请求的参数结构
@@ -84,54 +149,6 @@ type Usage struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-// ReviewCode 发送代码评审请求并处理响应
-func (c *DeepSeekClient) ReviewCode(prompt []Message) (*ChatResponse, error) {
-	req := ChatRequest{
-		Model:       "deepseek-ai/DeepSeek-R1",
-		Messages:    prompt,
-		MaxTokens:   2000,
-		Temperature: 0.7,
-		TopP:        0.95,
-		Stream:      false,
-	}
-
-	jsonData, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("序列化请求失败: %v", err)
-	}
-
-	httpReq, err := http.NewRequest("POST", DeepSeekAPIURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("创建HTTP请求失败: %v", err)
-	}
-
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
-
-	client := &http.Client{}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("发送请求失败: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应内容失败: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API请求失败: %s", string(body))
-	}
-
-	var chatResp ChatResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %v", err)
-	}
-
-	return &chatResp, nil
-}
-
 // ToolCall 定义工具调用的结构
 type ToolCall struct {
 	ID       string         `json:"id"`
@@ -143,42 +160,4 @@ type ToolCall struct {
 type FunctionResult struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
-}
-
-// Chat 发送聊天请求并获取响应
-func (c *DeepSeekClient) Chat(req *ChatRequest) (*ChatResponse, error) {
-	payload, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal request failed: %v", err)
-	}
-
-	httpReq, err := http.NewRequest("POST", DeepSeekAPIURL, bytes.NewReader(payload))
-	if err != nil {
-		return nil, fmt.Errorf("create request failed: %v", err)
-	}
-
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("send request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response failed: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var chatResp ChatResponse
-	if err := json.Unmarshal(body, &chatResp); err != nil {
-		return nil, fmt.Errorf("unmarshal response failed: %v", err)
-	}
-
-	return &chatResp, nil
 }

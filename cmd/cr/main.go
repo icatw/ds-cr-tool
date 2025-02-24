@@ -52,20 +52,20 @@ func main() {
 	if err != nil {
 		log.Printf("初始化缓存失败: %v\n", err)
 	}
-	apiKey := os.Getenv("DEEPSEEK_API_KEY")
-	if apiKey == "" {
+
+	// 初始化AI模型客户端
+	modelCfg := model.NewDsDefaultConfig(os.Getenv("DEEPSEEK_API_KEY"))
+	if modelCfg.APIKey == "" {
 		log.Fatal("未设置 DEEPSEEK_API_KEY 环境变量")
 	}
-	// 初始化AI模型客户端
-	modelCfg := &model.Config{
-		Type:   "deepseek",
-		APIKey: apiKey,
-		Model:  "deepseek-ai/DeepSeek-R1",
-	}
+
 	modelClient, err := model.NewModelClient(modelCfg)
 	if err != nil {
 		log.Fatalf("初始化AI模型客户端失败: %v\n", err)
 	}
+
+	// 创建评审提示模板
+	prompt := model.DefaultReviewPrompt()
 
 	// 处理每个改动文件
 	for _, change := range changes {
@@ -78,18 +78,15 @@ func main() {
 			}
 		}
 
+		// 生成评审提示
+		messages := prompt.GeneratePrompt(change.FilePath, change.ChangeType, change.DiffContent)
+
 		// 调用AI进行评审
 		req := &model.ChatRequest{
-			Messages: []model.Message{
-				{
-					Role:    "system",
-					Content: "你是一个专业的代码评审助手，请对以下代码改动进行评审并提供建议。",
-				},
-				{
-					Role:    "user",
-					Content: fmt.Sprintf("文件: %s\n改动类型: %s\n\n%s", change.FilePath, change.ChangeType, change.DiffContent),
-				},
-			},
+			Model:       modelCfg.Model,
+			Messages:    messages,
+			MaxTokens:   modelCfg.MaxTokens,
+			Temperature: modelCfg.Temperature,
 		}
 
 		resp, err := modelClient.Chat(req)
