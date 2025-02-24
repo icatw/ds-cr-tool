@@ -13,11 +13,11 @@
 
 ```bash
 # 使用 go install 安装
-go install github.com/icatw/cr@latest
+go install github.com/icatw/ds-cr-tool/cmd/cr@latest
 
 # 或者从源码安装
-git clone https://github.com/icatw/cr.git
-cd cr
+git clone https://github.com/icatw/ds-cr-tool.git
+cd ds-cr-tool
 go install
 ```
 

@@ -29,7 +29,7 @@
   - [x] 获取提交范围
 - [x] Git Hooks支持
   - [x] pre-commit hook
-  - [ ] pre-push hook
+  - [x] pre-push hook
 
 ## 3. 待开发功能
 
@@ -43,12 +43,17 @@
 
 ## 最近提交记录
 
-1. feat(review): 完善依赖分析功能
+1. feat(git): 完善pre-push钩子评审逻辑
+   - 完善代码评审流程
+   - 优化评审报告生成
+   - 添加严重问题检查
+
+2. feat(review): 完善依赖分析功能
    - 实现代码依赖关系分析
    - 优化分析算法
    - 添加依赖图生成
 
-2. feat(report): 添加HTML格式报告支持
+3. feat(report): 添加HTML格式报告支持
    - 实现HTML报告生成器
    - 添加样式美化
    - 优化展示效果
