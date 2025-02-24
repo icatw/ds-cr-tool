@@ -26,14 +26,14 @@ func NewDeepSeekClient(apiKey string) *DeepSeekClient {
 
 // ChatRequest 定义聊天请求的参数结构
 type ChatRequest struct {
-	Model            string            `json:"model"`
-	Messages         []Message         `json:"messages"`
-	Stream           bool              `json:"stream"`
-	MaxTokens        int               `json:"max_tokens"`
-	Stop             []string          `json:"stop,omitempty"`
-	Temperature      float64           `json:"temperature"`
-	TopP             float64           `json:"top_p"`
-	TopK             int               `json:"top_k"`
+	Model       string    `json:"model"`
+	Messages    []Message `json:"messages"`
+	Stream      bool      `json:"stream"`
+	MaxTokens   int       `json:"max_tokens"`
+	Stop        []string  `json:"stop,omitempty"`
+	Temperature float64   `json:"temperature"`
+	TopP        float64   `json:"top_p"`
+	//TopK             int               `json:"top_k"`
 	FrequencyPenalty float64           `json:"frequency_penalty"`
 	N                int               `json:"n"`
 	ResponseFormat   map[string]string `json:"response_format"`

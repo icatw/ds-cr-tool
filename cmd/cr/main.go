@@ -52,11 +52,14 @@ func main() {
 	if err != nil {
 		log.Printf("初始化缓存失败: %v\n", err)
 	}
-
+	apiKey := os.Getenv("DEEPSEEK_API_KEY")
+	if apiKey == "" {
+		log.Fatal("未设置 DEEPSEEK_API_KEY 环境变量")
+	}
 	// 初始化AI模型客户端
 	modelCfg := &model.Config{
 		Type:   "deepseek",
-		APIKey: os.Getenv("DEEPSEEK_API_KEY"),
+		APIKey: apiKey,
 		Model:  "deepseek-ai/DeepSeek-R1",
 	}
 	modelClient, err := model.NewModelClient(modelCfg)
