@@ -1,15 +1,13 @@
 # GPT-CodeReview
 
-基于 DeepSeek AI 的智能代码评审工具，通过分析 Git 差异自动生成代码评审报告，提高代码评审效率和质量。
+一个简单的代码评审工具，通过获取Git差异内容并调用DeepSeek API进行智能评审，自动生成代码评审报告。
 
 ## 特性
 
-- 🚀 基于 DeepSeek AI 的智能代码分析
-- 📊 自动生成详细的代码评审报告
-- 🔄 无缝集成 Git 工作流
-- ⚡ 高性能本地缓存
-- 🛠️ 简单的配置和使用方式
-- 🔌 可扩展的架构设计
+- 🚀 基于 DeepSeek AI 的智能评审
+- 🔄 自动获取Git差异内容
+- 📊 生成评审报告
+- 🛠️ 简单易用
 
 ## 安装
 
@@ -55,27 +53,9 @@ cr review <start-commit>..<end-commit>
 ```json
 {
   "api_key": "your_deepseek_api_key",
-  "model": "deepseek-chat",
-  "cache": {
-    "enabled": true,
-    "ttl": 86400
-  },
-  "output": {
-    "format": "markdown",
-    "template": "default"
-  }
+  "model": "deepseek-chat"
 }
 ```
-
-## 贡献
-
-欢迎提交 Pull Request 和 Issue！
-
-1. Fork 本仓库
-2. 创建您的特性分支：`git checkout -b feature/amazing-feature`
-3. 提交您的改动：`git commit -m 'Add some amazing feature'`
-4. 推送到分支：`git push origin feature/amazing-feature`
-5. 提交 Pull Request
 
 ## 许可证
 

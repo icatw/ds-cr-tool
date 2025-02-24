@@ -97,12 +97,12 @@ func (r *DefaultReporter) generateMarkdown(issues []Issue) ([]byte, error) {
 	buf.WriteString("## 详细问题列表\n\n")
 	for i, issue := range issues {
 		buf.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, issue.Title))
-		buf.WriteString(fmt.Sprintf("- 文件：%s\n", issue.FilePath))
+		buf.WriteString(fmt.Sprintf("- 文件：`%s`\n", issue.FilePath))
 		buf.WriteString(fmt.Sprintf("- 位置：第%d行\n", issue.Line))
-		buf.WriteString(fmt.Sprintf("- 严重程度：%s\n", issue.Severity))
+		buf.WriteString(fmt.Sprintf("- 严重程度：**%s**\n", issue.Severity))
 		buf.WriteString(fmt.Sprintf("- 描述：%s\n", issue.Description))
 		if issue.Suggestion != "" {
-			buf.WriteString(fmt.Sprintf("- 建议：%s\n", issue.Suggestion))
+			buf.WriteString(fmt.Sprintf("- 建议：> %s\n", issue.Suggestion))
 		}
 		buf.WriteString("\n")
 
@@ -114,13 +114,13 @@ func (r *DefaultReporter) generateMarkdown(issues []Issue) ([]byte, error) {
 			contextEnd := min(len(lines), issue.Line+3)
 
 			buf.WriteString("```go\n")
-			// 添加行号
+			// 添加行号和语法高亮
 			for i := contextStart; i < contextEnd; i++ {
 				linePrefix := "  "
 				if i == issue.Line-1 { // 高亮问题行
 					linePrefix = ">"
 				}
-				buf.WriteString(fmt.Sprintf("%s %4d | %s\n", linePrefix, i+1, lines[i]))
+				buf.WriteString(fmt.Sprintf("%s %4d │ %s\n", linePrefix, i+1, lines[i]))
 			}
 			buf.WriteString("```\n\n")
 		}
