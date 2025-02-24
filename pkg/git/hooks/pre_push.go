@@ -104,7 +104,7 @@ func (h *PrePushHook) reviewRef(ref RefInfo) error {
 	// 创建代码分析器
 	analyzer := review.NewAnalyzer(gitClient)
 
-	// 获取改动的文件列表和差异内容
+	// 获取代码改动
 	changes, err := analyzer.AnalyzeChanges(ref.OldHash, ref.NewHash)
 	if err != nil {
 		return fmt.Errorf("分析代码改动失败: %v", err)
@@ -115,73 +115,69 @@ func (h *PrePushHook) reviewRef(ref RefInfo) error {
 		return nil
 	}
 
-	// 创建模型客户端
-	modelCfg := &model.Config{
-		Type:        "deepseek",
-		APIKey:      h.Options["api_key"],
-		Model:       "deepseek-coder",
-		MaxTokens:   2048,
-		Temperature: 0.7,
+	// 初始化缓存
+	cacheManager, err := cache.NewReviewCache(h.Options["cache_dir"])
+	if err != nil {
+		return fmt.Errorf("初始化缓存失败: %v", err)
+	}
+
+	// 初始化AI模型客户端
+	modelCfg := model.NewDsDefaultConfig(h.Options["api_key"])
+	if modelCfg.APIKey == "" {
+		return fmt.Errorf("未设置API密钥")
 	}
 
 	modelClient, err := model.NewModelClient(modelCfg)
 	if err != nil {
-		return fmt.Errorf("创建模型客户端失败: %v", err)
+		return fmt.Errorf("初始化AI模型客户端失败: %v", err)
 	}
+
+	// 创建评审提示模板
+	prompt := model.DefaultReviewPrompt()
 
 	// 创建评审报告生成器
 	reporter := review.NewReporter("ds-cr-tool", ref.NewHash)
-
-	// 创建缓存管理器
-	cacheManager, err := cache.NewReviewCache(h.Options["cache_dir"])
-	if err != nil {
-		return fmt.Errorf("创建缓存管理器失败: %v", err)
-	}
 
 	// 分析代码问题
 	var issues []review.Issue
 	for _, change := range changes {
 		// 检查缓存
-		cacheItem, err := cacheManager.Get(change.DiffContent)
+		if cached, err := cacheManager.Get(change.DiffContent); err == nil && cached != nil {
+			issues = append(issues, review.Issue{
+				Title:      "AI代码评审结果",
+				FilePath:   change.FilePath,
+				Severity:   review.SeverityInfo,
+				Message:    cached.ReviewResult,
+				Suggestion: "请根据AI评审建议进行相应修改",
+			})
+			continue
+		}
+
+		// 生成评审提示
+		messages := prompt.GeneratePrompt(change.FilePath, change.ChangeType, change.DiffContent)
+
+		// 调用AI进行评审
+		req := &model.ChatRequest{
+			Model:       modelCfg.Model,
+			Messages:    messages,
+			MaxTokens:   modelCfg.MaxTokens,
+			Temperature: modelCfg.Temperature,
+		}
+
+		resp, err := modelClient.Chat(req)
 		if err != nil {
-			return fmt.Errorf("读取缓存失败: %v", err)
+			return fmt.Errorf("评审失败 - %s: %v", change.FilePath, err)
 		}
 
-		var reviewResult string
-		if cacheItem != nil {
-			// 使用缓存的评审结果
-			reviewResult = cacheItem.ReviewResult
-		} else {
-			// 使用模型分析代码问题
-			req := &model.ChatRequest{
-				Messages: []model.Message{
-					{
-						Role:    "system",
-						Content: "你是一个专业的代码评审助手，请对以下代码改动进行评审并提供建议。",
-					},
-					{
-						Role:    "user",
-						Content: fmt.Sprintf("文件: %s\n改动内容:\n%s", change.FilePath, change.DiffContent),
-					},
-				},
-			}
+		reviewResult := resp.Choices[0].Message.Content
 
-			response, err := modelClient.Chat(req)
-			if err != nil {
-				return fmt.Errorf("分析代码问题失败: %v", err)
-			}
-
-			// 将分析结果转换为JSON字符串
-			reviewResult = response.Choices[0].Message.Content
-
-			// 缓存评审结果
-			expireAfter := 24 * time.Hour
-			if err := cacheManager.Set(change.DiffContent, reviewResult, &expireAfter); err != nil {
-				return fmt.Errorf("缓存评审结果失败: %v", err)
-			}
+		// 缓存评审结果
+		expireAfter := 24 * time.Hour
+		if err := cacheManager.Set(change.DiffContent, reviewResult, &expireAfter); err != nil {
+			return fmt.Errorf("缓存评审结果失败: %v", err)
 		}
 
-		// 解析评审结果
+		// 添加评审结果
 		issues = append(issues, review.Issue{
 			Title:      "AI代码评审结果",
 			FilePath:   change.FilePath,
