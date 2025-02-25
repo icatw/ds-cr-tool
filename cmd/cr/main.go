@@ -55,14 +55,8 @@ func main() {
 
 	// 初始化AI模型客户端
 	deepseekKey := os.Getenv("DEEPSEEK_API_KEY")
-	if deepseekKey == "" {
-		log.Fatal("未设置 DEEPSEEK_API_KEY 环境变量")
-	}
 	qwenKey := os.Getenv("QWEN_API_KEY")
-	if qwenKey == "" {
-		log.Fatal("未设置 QWEN_API_KEY 环境变量")
-	}
-	// 创建模型配置
+	// 创建模型配置，只使用默认模型
 	modelCfg := model.NewModelConfigWithKeys(deepseekKey, "", "", qwenKey)
 
 	// 创建模型管理器
@@ -72,7 +66,7 @@ func main() {
 	}
 
 	// 获取默认模型客户端
-	modelClient, err := modelManager.GetClient("qwen")
+	modelClient, err := modelManager.GetClient("")
 	if err != nil {
 		log.Fatalf("获取模型客户端失败: %v\n", err)
 	}

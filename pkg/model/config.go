@@ -33,41 +33,55 @@ var DefaultModelConfig = ModelConfig{
 
 // NewModelConfigWithKeys 创建带有API密钥的模型配置
 func NewModelConfigWithKeys(deepseekKey, openaiKey, chatglmKey, qwenKey string) *ModelConfig {
-	// 创建DefaultModelConfig的深拷贝
+	// 创建新的配置
 	cfg := ModelConfig{
-		DefaultModel: DefaultModelConfig.DefaultModel,
+		DefaultModel: "qwen", // 设置默认模型为qwen
 		Models:       make(map[string]*Config),
 	}
 
-	// 复制每个模型的配置
-	for modelType, defaultConfig := range DefaultModelConfig.Models {
-		cfg.Models[modelType] = &Config{
-			Type:        defaultConfig.Type,
-			Model:       defaultConfig.Model,
-			MaxTokens:   defaultConfig.MaxTokens,
-			Temperature: defaultConfig.Temperature,
+	// 只添加有API密钥的模型配置
+	if qwenKey != "" {
+		cfg.Models["qwen"] = &Config{
+			Type:        "qwen",
+			Model:       "qwen-coder-plus",
+			MaxTokens:   2000,
+			Temperature: 0.7,
+			APIKey:      qwenKey,
 			ExtraParams: make(map[string]interface{}),
-		}
-		// 复制ExtraParams
-		if defaultConfig.ExtraParams != nil {
-			for k, v := range defaultConfig.ExtraParams {
-				cfg.Models[modelType].ExtraParams[k] = v
-			}
 		}
 	}
 
-	// 设置API密钥
 	if deepseekKey != "" {
-		cfg.Models["deepseek"].APIKey = deepseekKey
+		cfg.Models["deepseek"] = &Config{
+			Type:        "deepseek",
+			Model:       "deepseek-ai/DeepSeek-R1",
+			MaxTokens:   2000,
+			Temperature: 0.7,
+			APIKey:      deepseekKey,
+			ExtraParams: make(map[string]interface{}),
+		}
 	}
+
 	if openaiKey != "" {
-		cfg.Models["openai"].APIKey = openaiKey
+		cfg.Models["openai"] = &Config{
+			Type:        "openai",
+			Model:       "gpt-3.5-turbo",
+			MaxTokens:   2000,
+			Temperature: 0.7,
+			APIKey:      openaiKey,
+			ExtraParams: make(map[string]interface{}),
+		}
 	}
+
 	if chatglmKey != "" {
-		cfg.Models["chatglm"].APIKey = chatglmKey
-	}
-	if qwenKey != "" {
-		cfg.Models["qwen"].APIKey = qwenKey
+		cfg.Models["chatglm"] = &Config{
+			Type:        "chatglm",
+			Model:       "glm-4",
+			MaxTokens:   2000,
+			Temperature: 0.7,
+			APIKey:      chatglmKey,
+			ExtraParams: make(map[string]interface{}),
+		}
 	}
 
 	return &cfg
