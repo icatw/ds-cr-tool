@@ -15,6 +15,9 @@ type Options struct {
 	OutputFormat string
 	OutputFile   string
 
+	// AI模型选项
+	Model string
+
 	// 其他选项
 	Verbose bool
 }
@@ -30,6 +33,9 @@ func ParseFlags() (*Options, error) {
 	// 输出选项
 	flag.StringVar(&opts.OutputFormat, "format", "markdown", "输出格式：markdown, html, pdf")
 	flag.StringVar(&opts.OutputFile, "output", "", "输出文件路径，默认输出到标准输出")
+
+	// AI模型选项
+	flag.StringVar(&opts.Model, "model", "", "指定使用的AI模型，可选值：qwen, deepseek, openai, chatglm")
 
 	// 其他选项
 	flag.BoolVar(&opts.Verbose, "verbose", false, "显示详细日志信息")
@@ -59,6 +65,16 @@ func validateOptions(opts *Options) error {
 		// 支持的格式
 	default:
 		return fmt.Errorf("不支持的输出格式：%s", opts.OutputFormat)
+	}
+
+	// 检查AI模型
+	if opts.Model != "" {
+		switch opts.Model {
+		case "qwen", "deepseek", "openai", "chatglm":
+			// 支持的模型
+		default:
+			return fmt.Errorf("不支持的AI模型：%s", opts.Model)
+		}
 	}
 
 	return nil

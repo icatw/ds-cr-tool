@@ -65,8 +65,8 @@ func main() {
 		log.Fatalf("初始化模型管理器失败: %v\n", err)
 	}
 
-	// 获取默认模型客户端
-	modelClient, err := modelManager.GetClient("")
+	// 获取指定或默认的模型客户端
+	modelClient, err := modelManager.GetClient(opts.Model)
 	if err != nil {
 		log.Fatalf("获取模型客户端失败: %v\n", err)
 	}
