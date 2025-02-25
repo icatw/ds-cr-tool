@@ -54,18 +54,35 @@ func main() {
 	}
 
 	// 初始化AI模型客户端
-	modelCfg := model.NewDsDefaultConfig(os.Getenv("DEEPSEEK_API_KEY"))
-	if modelCfg.APIKey == "" {
+	deepseekKey := os.Getenv("DEEPSEEK_API_KEY")
+	if deepseekKey == "" {
 		log.Fatal("未设置 DEEPSEEK_API_KEY 环境变量")
 	}
+	qwenKey := os.Getenv("QWEN_API_KEY")
+	if qwenKey == "" {
+		log.Fatal("未设置 QWEN_API_KEY 环境变量")
+	}
+	// 创建模型配置
+	modelCfg := model.NewModelConfigWithKeys(deepseekKey, "", "", qwenKey)
 
-	modelClient, err := model.NewModelClient(modelCfg)
+	// 创建模型管理器
+	modelManager, err := model.NewModelManager(modelCfg)
 	if err != nil {
-		log.Fatalf("初始化AI模型客户端失败: %v\n", err)
+		log.Fatalf("初始化模型管理器失败: %v\n", err)
+	}
+
+	// 获取默认模型客户端
+	modelClient, err := modelManager.GetClient("qwen")
+	if err != nil {
+		log.Fatalf("获取模型客户端失败: %v\n", err)
 	}
 
 	// 创建评审提示模板
 	prompt := model.DefaultReviewPrompt()
+
+	// 创建评审报告生成器
+	reporter := review.NewReporter("ds-cr-tool", "HEAD")
+	var issues []review.Issue
 
 	// 处理每个改动文件
 	for _, change := range changes {
@@ -73,7 +90,13 @@ func main() {
 		if reviewCache != nil {
 			if cached, err := reviewCache.Get(change.DiffContent); err == nil && cached != nil {
 				fmt.Printf("使用缓存的评审结果 - %s\n", change.FilePath)
-				fmt.Println(cached.ReviewResult)
+				issues = append(issues, review.Issue{
+					Title:       "AI代码评审结果",
+					FilePath:    change.FilePath,
+					Severity:    review.SeverityInfo,
+					Description: cached.ReviewResult,
+					Suggestion:  "请根据AI评审建议进行相应修改",
+				})
 				continue
 			}
 		}
@@ -83,10 +106,10 @@ func main() {
 
 		// 调用AI进行评审
 		req := &model.ChatRequest{
-			Model:       modelCfg.Model,
+			Model:       modelCfg.Models[modelCfg.DefaultModel].Model,
 			Messages:    messages,
-			MaxTokens:   modelCfg.MaxTokens,
-			Temperature: modelCfg.Temperature,
+			MaxTokens:   modelCfg.Models[modelCfg.DefaultModel].MaxTokens,
+			Temperature: modelCfg.Models[modelCfg.DefaultModel].Temperature,
 		}
 
 		resp, err := modelClient.Chat(req)
@@ -95,9 +118,14 @@ func main() {
 			continue
 		}
 
-		// 输出评审结果
-		fmt.Printf("\n=== 文件: %s ===\n", change.FilePath)
-		fmt.Println(resp.Choices[0].Message.Content)
+		// 添加评审结果到issues
+		issues = append(issues, review.Issue{
+			Title:       "AI代码评审结果",
+			FilePath:    change.FilePath,
+			Severity:    review.SeverityInfo,
+			Description: resp.Choices[0].Message.Content,
+			Suggestion:  "请根据AI评审建议进行相应修改",
+		})
 
 		// 缓存评审结果
 		if reviewCache != nil {
@@ -107,4 +135,38 @@ func main() {
 			}
 		}
 	}
+
+	// 生成评审报告
+	reportContent, err := reporter.Generate(issues, review.ReportFormat(opts.OutputFormat))
+	if err != nil {
+		log.Fatalf("生成评审报告失败: %v\n", err)
+	}
+
+	// 创建输出目录
+	outputDir := filepath.Join(wd, "cr-result")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		log.Fatalf("创建输出目录失败: %v\n", err)
+	}
+
+	// 生成输出文件名
+	timestamp := time.Now().Format("20060102_150405")
+	outputFileName := fmt.Sprintf("review_%s.%s", timestamp, opts.OutputFormat)
+	outputPath := filepath.Join(outputDir, outputFileName)
+
+	// 如果指定了输出文件，使用指定的路径
+	if opts.OutputFile != "" {
+		outputPath = opts.OutputFile
+	}
+
+	// 保存评审报告到文件
+	if err := os.WriteFile(outputPath, reportContent, 0644); err != nil {
+		log.Fatalf("保存评审报告失败: %v\n", err)
+	}
+	fmt.Printf("评审报告已保存到: %s\n", outputPath)
+
+	// 同时输出到控制台
+	// if opts.OutputFile == "" {
+	// 	fmt.Println("\n评审报告内容:")
+	// 	fmt.Println(reportContent)
+	// }
 }

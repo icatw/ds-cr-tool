@@ -52,7 +52,7 @@ func (r *DefaultReporter) generateMarkdown(issues []Issue) ([]byte, error) {
 	// 按严重程度分类统计
 	severityCount := make(map[string]int)
 	for _, issue := range issues {
-		severityCount[string(issue.Severity)]++
+		severityCount[issue.Severity]++
 	}
 
 	// 写入统计信息
@@ -70,7 +70,7 @@ func (r *DefaultReporter) generateMarkdown(issues []Issue) ([]byte, error) {
 	buf.WriteString("| 严重程度 | 数量 |\n")
 	buf.WriteString("|---------|---------|\n")
 	for severity, count := range severityCount {
-		buf.WriteString(fmt.Sprintf("| %s | %d |\n", severity, count))
+		buf.WriteString(fmt.Sprintf("| %s | %d |\n", string(severity), count))
 	}
 	buf.WriteString("\n")
 
@@ -171,7 +171,7 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 	// 统计信息
 	severityCount := make(map[string]int)
 	for _, issue := range issues {
-		severityCount[string(issue.Severity)]++
+		severityCount[issue.Severity]++
 	}
 
 	// 写入统计卡片
@@ -194,7 +194,7 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 		<h3>问题严重程度分布</h3>`)
 	for severity, count := range severityCount {
 		buf.WriteString(fmt.Sprintf(`
-		<p><span class="severity %s">%s</span>: %d</p>`, strings.ToLower(severity), severity, count))
+		<p><span class="severity %s">%s</span>: %d</p>`, strings.ToLower(string(severity)), severity, count))
 	}
 	buf.WriteString(`
 	</div>
@@ -267,23 +267,6 @@ func (r *DefaultReporter) generateHTML(issues []Issue) ([]byte, error) {
 </html>`)
 
 	return buf.Bytes(), nil
-}
-
-// 辅助函数
-// getMax 获取两个整数中的较大值
-func getMax(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-// getMin 获取两个整数中的较小值
-func getMin(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // 辅助函数：获取唯一文件列表

@@ -122,14 +122,18 @@ func (h *PrePushHook) reviewRef(ref RefInfo) error {
 	}
 
 	// 初始化AI模型客户端
-	modelCfg := model.NewDsDefaultConfig(h.Options["api_key"])
-	if modelCfg.APIKey == "" {
-		return fmt.Errorf("未设置API密钥")
+	modelCfg := model.NewModelConfigWithKeys(h.Options["api_key"], "", "", "")
+
+	// 创建模型管理器
+	modelManager, err := model.NewModelManager(modelCfg)
+	if err != nil {
+		return fmt.Errorf("初始化模型管理器失败: %v", err)
 	}
 
-	modelClient, err := model.NewModelClient(modelCfg)
+	// 获取默认模型客户端
+	modelClient, err := modelManager.GetClient("")
 	if err != nil {
-		return fmt.Errorf("初始化AI模型客户端失败: %v", err)
+		return fmt.Errorf("获取模型客户端失败: %v", err)
 	}
 
 	// 创建评审提示模板
@@ -147,7 +151,7 @@ func (h *PrePushHook) reviewRef(ref RefInfo) error {
 				Title:      "AI代码评审结果",
 				FilePath:   change.FilePath,
 				Severity:   review.SeverityInfo,
-				Message:    cached.ReviewResult,
+				Description: cached.ReviewResult,
 				Suggestion: "请根据AI评审建议进行相应修改",
 			})
 			continue
@@ -158,10 +162,10 @@ func (h *PrePushHook) reviewRef(ref RefInfo) error {
 
 		// 调用AI进行评审
 		req := &model.ChatRequest{
-			Model:       modelCfg.Model,
+			Model:       modelCfg.Models[modelCfg.DefaultModel].Model,
 			Messages:    messages,
-			MaxTokens:   modelCfg.MaxTokens,
-			Temperature: modelCfg.Temperature,
+			MaxTokens:   modelCfg.Models[modelCfg.DefaultModel].MaxTokens,
+			Temperature: modelCfg.Models[modelCfg.DefaultModel].Temperature,
 		}
 
 		resp, err := modelClient.Chat(req)
@@ -182,7 +186,7 @@ func (h *PrePushHook) reviewRef(ref RefInfo) error {
 			Title:      "AI代码评审结果",
 			FilePath:   change.FilePath,
 			Severity:   review.SeverityInfo,
-			Message:    reviewResult,
+			Description: reviewResult,
 			Suggestion: "请根据AI评审建议进行相应修改",
 		})
 	}
