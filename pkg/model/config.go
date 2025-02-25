@@ -2,7 +2,7 @@ package model
 
 // DefaultModelConfig 默认的全局模型配置
 var DefaultModelConfig = ModelConfig{
-	DefaultModel: "deepseek",
+	DefaultModel: "qwen",
 	Models: map[string]*Config{
 		"deepseek": {
 			Type:        "deepseek",
@@ -33,7 +33,30 @@ var DefaultModelConfig = ModelConfig{
 
 // NewModelConfigWithKeys 创建带有API密钥的模型配置
 func NewModelConfigWithKeys(deepseekKey, openaiKey, chatglmKey, qwenKey string) *ModelConfig {
-	cfg := DefaultModelConfig
+	// 创建DefaultModelConfig的深拷贝
+	cfg := ModelConfig{
+		DefaultModel: DefaultModelConfig.DefaultModel,
+		Models:       make(map[string]*Config),
+	}
+
+	// 复制每个模型的配置
+	for modelType, defaultConfig := range DefaultModelConfig.Models {
+		cfg.Models[modelType] = &Config{
+			Type:        defaultConfig.Type,
+			Model:       defaultConfig.Model,
+			MaxTokens:   defaultConfig.MaxTokens,
+			Temperature: defaultConfig.Temperature,
+			ExtraParams: make(map[string]interface{}),
+		}
+		// 复制ExtraParams
+		if defaultConfig.ExtraParams != nil {
+			for k, v := range defaultConfig.ExtraParams {
+				cfg.Models[modelType].ExtraParams[k] = v
+			}
+		}
+	}
+
+	// 设置API密钥
 	if deepseekKey != "" {
 		cfg.Models["deepseek"].APIKey = deepseekKey
 	}
@@ -46,6 +69,7 @@ func NewModelConfigWithKeys(deepseekKey, openaiKey, chatglmKey, qwenKey string) 
 	if qwenKey != "" {
 		cfg.Models["qwen"].APIKey = qwenKey
 	}
+
 	return &cfg
 }
 

@@ -186,6 +186,7 @@ func (m *ModelManager) GetClient(modelType string) (ModelClient, error) {
 
 	// 检查客户端是否已经创建
 	if client, exists := m.clients[modelType]; exists {
+		fmt.Printf("使用已创建的模型客户端: %s (模型: %s)\n", modelType, m.config.Models[modelType].Model)
 		return client, nil
 	}
 
@@ -203,5 +204,6 @@ func (m *ModelManager) GetClient(modelType string) (ModelClient, error) {
 
 	// 缓存客户端
 	m.clients[modelType] = client
+	fmt.Printf("创建新的模型客户端: %s (模型: %s)\n", modelType, config.Model)
 	return client, nil
 }
